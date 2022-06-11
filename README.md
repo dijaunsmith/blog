@@ -1,2 +1,2 @@
 # blog
-A Blog web application under the theme of a personal daily journal.
+A user-content-driven blog web application serving as a personal journal.
