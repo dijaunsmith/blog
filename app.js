@@ -4,6 +4,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const _ = require("lodash");
+const mongoose = require("mongoose");
 
 const homeStartingContent = "Welcome to OUR blog! This user-content-driven blog serves as a personal journal for the user/author, which can be me, or even you!";
 const guideStartingContent ="To begin composing your first post, proceed to by adding '/compose' to the current website url. A preview of each post gets created below, prompting you to a page to read more. Happy blogging! "
@@ -23,11 +24,22 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(express.static("public"));
 
-app.get("/", function(req, res){
-  res.render("home", {
-    homeContent:homeStartingContent, 
-    guideContent:guideStartingContent,
-    posts:posts,
+mongoose.connect("mongodb+srv://<username>:<password>@cluster0.ack4obt.mongodb.net/blogDB");
+
+const postSchema = {
+  title: String,
+  content: String
+};
+
+const Post = mongoose.model("Post", postSchema);
+
+app.get("/", function(req, res){  
+  Post.find({},function(err, posts){
+    res.render("home", {
+      homeContent:homeStartingContent, 
+      guideContent:guideStartingContent,
+      posts:posts,
+    });
   });
 });
 
@@ -49,29 +61,28 @@ app.get("/compose", function(req, res){
 });
 
 app.post("/", function(req, res){
-  const post = {
+  const post = new Post({
     title: req.body.postTitle,
     content: req.body.postBody
-  };
-  posts.push(post);
-  res.redirect("/");
+  });
+  post.save(function(err){
+    if (!err){
+    res.redirect("/");
+    }
+    });
 });
 
-app.get("/posts/:postTitle", function(req, res){
-  let parameterTitle = req.params.postTitle;
 
-  posts.forEach(function(post){
-    let parTitle = _.lowerCase(parameterTitle);
-    let postTopic = _.lowerCase(post['title']);
-    let normalPostTopic =  post['title']
-    let postcontains = post['content'];
-    if(parTitle == postTopic){ 
+
+app.get("/posts/:postId", function(req, res){
+  let requestedPostId = req.params.postId;
+  
+    Post.findOne({_id: requestedPostId}, function(err, post){
       res.render("post", {
-        normalPostTopic:normalPostTopic,
-        postContent: postcontains,
+        normalPostTopic: post.title,
+        postContent: post.content
       });
-    };
-  });
+    });
 });
 
 
@@ -79,3 +90,7 @@ app.get("/posts/:postTitle", function(req, res){
 app.listen(process.env.PORT || 3000, function() {
   console.log("Server started on port 3000");
 });
+
+
+// To restart the heroku app: heroku restart -a [app_name]
+// In our case: heroku restart -a stark-earth-09003
